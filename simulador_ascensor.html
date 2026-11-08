@@ -27,7 +27,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 #needle{transition:transform 1.2s ease;transform-origin:70px 70px}
 @media (prefers-reduced-motion:reduce){#needle{transition:none}}
 .st{font-weight:700;color:var(--ac)}button:disabled{opacity:.4;cursor:not-allowed}.btns button:disabled{pointer-events:none}.msg{min-height:20px;color:#c2410c;font-size:13px;margin:8px 0 0}
-table{border-collapse:collapse;width:100%;font-size:13px}td{padding:3px 8px 3px 0;border-bottom:1px solid var(--bd);vertical-align:top}td:first-child{color:var(--mu)}
+table{border-collapse:collapse;width:100%;font-size:13px}td{padding:3px 8px 3px 0;border-bottom:1px solid var(--bd);vertical-align:top;overflow-wrap:anywhere}td:first-child{color:var(--mu)}@media (max-width:640px){#insp tr{display:block;padding:5px 0;border-bottom:1px solid var(--bd)}#insp td{display:block;border:0;padding:1px 0}}
 td:last-child{font-family:ui-monospace,Menlo,Consolas,monospace}
 i.h{font-style:normal;color:var(--ok);font-weight:700}i.l{font-style:normal;color:var(--mu)}
 #lg{max-height:180px;overflow:auto;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace}#lg .ar{color:var(--ac)}#lg .pi{color:var(--amb)}
@@ -63,7 +63,7 @@ function setSeg(el,on){el.querySelectorAll('rect').forEach(r=>r.classList.toggle
 /* Modelos de integrados (comportamiento según datasheet) */
 const or32=(a,b)=>a|b, xor86=(a,b)=>a^b, and08=(a,b)=>a&b;
 const btnBits=f=>[or32(+(f===2),+(f===4)),or32(+(f===3),+(f===4))]; // 74LS32: 2 o 4 y 3 o 4
-const ls74=(reg,d)=>{R[reg]=[d[0],d[1]]}; // flanco ascendente, PRE y CLR inactivos
+const clkT={A:0,L:0,D:0};let bus=[0,0];const ls74=(reg,d)=>{R[reg]=[d[0],d[1]];clkT[reg]=performance.now();if(reg==='A')bus=[d[0],d[1]]}; // flanco ascendente, PRE y CLR inactivos
 const ls48in=q=>({A:1-q[0],B:xor86(q[1],q[0]),C:and08(q[1],q[0]),D:0}); // A=Q0', B=Q1 xor Q0, C=Q1 y Q0, D=0
 const ls48out=(i,bi)=>{const v=i.A|i.B<<1|i.C<<2|i.D<<3;return bi&&v<10?SEG[v]:''};
 const ls85=(a,b)=>{const x=a[0]|a[1]<<1,y=b[0]|b[1]<<1;return{gt:+(x>y),eq:+(x===y),lt:+(x<y)}};
@@ -117,13 +117,13 @@ function render(){
  const m=document.querySelectorAll('#mv .led');m[0].classList.toggle('on',mov&&!!k.lt);m[1].classList.toggle('on',mov&&!!k.gt);m[2].classList.toggle('on',!(mov&&!k.eq));
  const a=FA[floor()-1];$('#needle').style.transform=`rotate(${a}deg)`;$('#ang').textContent='Servo '+a+'°';
  $('#st').textContent=ar.st;$('#msg').textContent=ar.msg||($('#pon').checked?'Modo accesible: los botones de piso están deshabilitados.':'');document.querySelectorAll('.btns button').forEach(b=>b.disabled=$('#pon').checked);
- const c=ls85(R.A,R.L),d=ls85(R.A,R.D),cb=btnBits(pin.call),db=btnBits(pin.dest);
+ const c=ls85(R.A,R.L),d=ls85(R.A,R.D),cb=btnBits(eff('call')),db=btnBits(eff('dest'));
  $('#insp').innerHTML=[
  ['U1 74LS74, piso actual (Q1 Q0)',bt(R.A[1],R.A[0])+' = piso '+floor()],
  ['U2 74LS74, llamada (Q1 Q0)',bt(R.L[1],R.L[0])],['U3 74LS74, destino (Q1 Q0)',bt(R.D[1],R.D[0])],
- ['U10 74LS32 botones llamada (D1 D0)',bt(cb[1],cb[0])],['U10 74LS32 botones destino (D1 D0)',bt(db[1],db[0])],
- ['U8 74LS48 llamada (D C B A) y BI',bt(iL.D,iL.C,iL.B,iL.A)+' BI='+bL],['U9 74LS48 destino (D C B A) y BI',bt(iD.D,iD.C,iD.B,iD.A)+' BI='+bD],
- ['U6 74LS85 actual vs llamada (A>B, A=B, A<B)',bt(c.gt,c.eq,c.lt)],['U7 74LS85 actual vs destino (A>B, A=B, A<B)',bt(d.gt,d.eq,d.lt)]
+ ['U10 74LS32 botones llamada (D1 D0)',bt(cb[1],cb[0])],['U10 74LS32 botones destino (D1 D0)',bt(db[1],db[0])],['U11 74LS86 XOR Q1⊕Q0 (llamada | destino)',bt(iL.B)+' | '+bt(iD.B)],['U12 74LS08 AND Q1·Q0 (llamada | destino)',bt(iL.C)+' | '+bt(iD.C)],['U12/U13 74LS08 LEDs del piso (1 2 3 4)',bt(and08(1-q[1],1-q[0]),and08(1-q[1],q[0]),and08(q[1],1-q[0]),and08(q[1],q[0]))],['Bus del Arduino hacia U1 (D1 D0)',bt(bus[1],bus[0])],['Relojes CLK actual | llamada | destino',bt(...['A','L','D'].map(x=>+(performance.now()-clkT[x]<400)))],
+ ['U8 74LS48 llamada (D C B A) y BI',bt(iL.D,iL.C,iL.B,iL.A)+' BI='+bL+(bL?' encendido':' apagado')],['U9 74LS48 destino (D C B A) y BI',bt(iD.D,iD.C,iD.B,iD.A)+' BI='+bD+(bD?' encendido':' apagado')],
+ ['U6 74LS85 actual vs llamada (A&gt;B, A=B, A&lt;B)'+(mov&&!ph?' ◂ en uso':''),bt(c.gt,c.eq,c.lt)],['U7 74LS85 actual vs destino (A&gt;B, A=B, A&lt;B)'+(mov&&ph?' ◂ en uso':''),bt(d.gt,d.eq,d.lt)]
  ].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
  if(dirty){$('#lg').innerHTML=logs.join('');dirty=0}
 }
