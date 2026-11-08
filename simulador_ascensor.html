@@ -26,7 +26,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .led.on i{background:var(--led);box-shadow:0 0 10px var(--led)}.led.g.on i{background:var(--ok);box-shadow:0 0 10px var(--ok)}.led.a.on i{background:var(--amb);box-shadow:0 0 10px var(--amb)}
 #needle{transition:transform 1.2s ease;transform-origin:70px 70px}
 @media (prefers-reduced-motion:reduce){#needle{transition:none}}
-.st{font-weight:700;color:var(--ac)}button:disabled{opacity:.4;cursor:not-allowed}.msg{min-height:20px;color:#c2410c;font-size:13px;margin:8px 0 0}
+.st{font-weight:700;color:var(--ac)}button:disabled{opacity:.4;cursor:not-allowed}.btns button:disabled{pointer-events:none}.msg{min-height:20px;color:#c2410c;font-size:13px;margin:8px 0 0}
 table{border-collapse:collapse;width:100%;font-size:13px}td{padding:3px 8px 3px 0;border-bottom:1px solid var(--bd);vertical-align:top}td:first-child{color:var(--mu)}
 td:last-child{font-family:ui-monospace,Menlo,Consolas,monospace}
 i.h{font-style:normal;color:var(--ok);font-weight:700}i.l{font-style:normal;color:var(--mu)}
@@ -92,7 +92,7 @@ function loop(){
 /* Interfaz */
 function press(k,f){pin[k]=f;const ok=k==='call'?ar.st==='ESPERA_LLAMADA':ar.st==='ESPERA_DESTINO';if(!ok){ar.msg='Bloqueado: el Arduino no da reloj a los flip-flops en este estado. El registro conserva su valor.';setTimeout(()=>ar.msg='',3500)}}
 ['call','dest'].forEach((k,i)=>{const w=$(i?'#bD':'#bL');for(let f=1;f<=4;f++){const b=document.createElement('button');b.textContent=f;b.setAttribute('aria-label','Piso '+f);
- const dn=()=>{b.classList.add('dn');press(k,f)},up=()=>{b.classList.remove('dn');if(pin[k]===f)pin[k]=0};
+ const dn=()=>{if($('#pon').checked)return;b.classList.add('dn');press(k,f)},up=()=>{b.classList.remove('dn');if(pin[k]===f)pin[k]=0};
  b.onpointerdown=dn;b.onpointerup=b.onpointerleave=b.onpointercancel=up;b.onkeydown=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();if(!e.repeat)dn()}};b.onkeyup=up;w.appendChild(b)}});
 mkSeg($('#dL'));mkSeg($('#dD'));
 $('#fl').innerHTML=[1,2,3,4].map(n=>`<div class="led g"><i></i>Piso ${n}</div>`).join('');
