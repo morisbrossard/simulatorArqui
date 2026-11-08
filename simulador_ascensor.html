@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulador del ascensor de 4 pisos</title>
+<style>
+:root{--bg:#e9edf1;--card:#fff;--tx:#17202a;--mu:#5b6775;--bd:#cfd6de;--ac:#0b6e99;--led:#ff4d3d;--ok:#1f9d55;--amb:#e8a317;--off:#d5dbe2;--dsp:#10161c;--seg:#ff4d3d;--sg:#2b3640;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1217;--card:#161d25;--tx:#e6ebf0;--mu:#93a1b0;--bd:#2a3541;--ac:#4cb8e6;--off:#2a3541;--dsp:#06090c;--sg:#1d262f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0d1217;--card:#161d25;--tx:#e6ebf0;--mu:#93a1b0;--bd:#2a3541;--ac:#4cb8e6;--off:#2a3541;--dsp:#06090c;--sg:#1d262f;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:18px 16px 6px;max-width:1100px;margin:auto}
+h1{font-size:22px;margin:0 0 4px;font-weight:700}h2{font-size:15px;margin:0 0 10px;font-weight:650}
+.mu{color:var(--mu);font-size:13px;margin:0}
+main{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px;padding:12px 16px 24px;max-width:1100px;margin:auto}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;min-width:0}
+.wide{grid-column:1/-1}
+.row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.dsp{background:var(--dsp);border-radius:8px;padding:10px 14px;line-height:0}
+.dsp rect{fill:var(--sg)}.dsp rect.on{fill:var(--seg)}
+.btns{display:grid;grid-template-columns:repeat(4,46px);gap:8px}
+button,select{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;cursor:pointer;touch-action:manipulation}
+.btns button{padding:12px 0;font-weight:700;user-select:none}.btns button:active,.btns button.dn{background:var(--ac);color:#fff}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.leds{display:flex;gap:12px;flex-wrap:wrap}.led{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--mu);gap:4px}
+.led i{width:20px;height:20px;border-radius:50%;background:var(--off);border:1px solid var(--bd)}
+.led.on i{background:var(--led);box-shadow:0 0 10px var(--led)}.led.g.on i{background:var(--ok);box-shadow:0 0 10px var(--ok)}.led.a.on i{background:var(--amb);box-shadow:0 0 10px var(--amb)}
+#needle{transition:transform 1.2s ease;transform-origin:70px 70px}
+@media (prefers-reduced-motion:reduce){#needle{transition:none}}
+.st{font-weight:700;color:var(--ac)}.msg{min-height:20px;color:#c2410c;font-size:13px;margin:8px 0 0}
+table{border-collapse:collapse;width:100%;font-size:13px}td{padding:3px 8px 3px 0;border-bottom:1px solid var(--bd);vertical-align:top}td:first-child{color:var(--mu)}
+td:last-child{font-family:ui-monospace,Menlo,Consolas,monospace}
+i.h{font-style:normal;color:var(--ok);font-weight:700}i.l{font-style:normal;color:var(--mu)}
+#lg{max-height:180px;overflow:auto;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace}#lg .ar{color:var(--ac)}#lg .pi{color:var(--amb)}
+.cam{width:120px;height:78px;border:1px dashed var(--bd);border-radius:6px;display:grid;place-items:center;font-size:12px;color:var(--mu);text-align:center}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}label{font-size:13px}
+</style></head><body>
+<header><h1>Simulador del ascensor de 4 pisos</h1>
+<p class="mu">11 integrados 74LS, Arduino Mega, servo SG90 y Raspberry Pi. Los chips se simulan según su hoja de datos. Los gestos de la Pi se simulan con botones y la cámara es solo gráfica.</p></header>
+<main>
+<section class="card"><h2>Llamada (innovación)</h2><div class="row"><div class="dsp" id="dL"></div><div class="btns" id="bL"></div></div>
+<p class="mu" style="margin-top:8px">Pulsa un piso y mantén. Display 74LS48 apagado por BI/RBO hasta que se use.</p></section>
+<section class="card"><h2>Cabina (destino)</h2><div class="row"><div class="dsp" id="dD"></div><div class="btns" id="bD"></div></div>
+<p class="mu" style="margin-top:8px">Solo se acepta tras la llegada a la llamada.</p></section>
+<section class="card"><h2>Piso actual y movimiento</h2>
+<div class="leds" id="fl"></div>
+<div class="row" style="margin-top:10px"><svg viewBox="0 0 140 84" width="150" role="img" aria-label="Servo SG90"><path d="M10 70A60 60 0 0 1 130 70" fill="none" stroke="var(--bd)" stroke-width="3"/><g id="needle"><line x1="70" y1="70" x2="70" y2="16" stroke="var(--led)" stroke-width="3" stroke-linecap="round"/></g><circle cx="70" cy="70" r="5" fill="var(--tx)"/><text x="70" y="82" text-anchor="middle" font-size="9" fill="var(--mu)" id="ang"></text></svg>
+<div class="leds" id="mv"></div></div></section>
+<section class="card"><h2>Arduino Mega</h2><div>Estado: <span class="st" id="st"></span></div><p class="msg" id="msg"></p>
+<div class="ctl"><button id="rs">Reiniciar</button></div></section>
+<section class="card"><h2>Raspberry Pi · modo accesible</h2>
+<div class="row"><div class="cam">ESP32-CAM<br>(gráfica)</div><div><label><input type="checkbox" id="pon"> Modo accesible</label><br><label><input type="checkbox" id="snd" checked> Voz</label>
+<div>Piso elegido: <b id="ps">1</b> <span class="mu" id="pf"></span></div></div></div>
+<div class="ctl"><button data-g="up">Dedo hacia arriba</button><button data-g="down">Dedo hacia abajo</button><button data-g="stop">Stop (confirmar)</button></div></section>
+<section class="card wide"><h2>Inspector de señales</h2><table id="insp"></table></section>
+<section class="card wide"><h2>Serial y audio</h2><div id="lg"></div></section>
+</main>
+<script>
+const $=s=>document.querySelector(s),FA=[-90,-30,30,90];
+const SEG=['abcdef','bc','abdeg','abcdg','bcfg','acdfg','cdefg','abc','abcdefg','abcdfg'];
+const GEO={a:[6,2,28,5],b:[32,6,5,24],c:[32,34,5,24],d:[6,57,28,5],e:[3,34,5,24],f:[3,6,5,24],g:[6,29.5,28,5]};
+function mkSeg(el){el.innerHTML='<svg viewBox="0 0 40 64" width="56" height="90" role="img" aria-label="Display de 7 segmentos">'+Object.entries(GEO).map(([k,v])=>`<rect data-s="${k}" x="${v[0]}" y="${v[1]}" width="${v[2]}" height="${v[3]}" rx="2"/>`).join('')+'</svg>'}
+function setSeg(el,on){el.querySelectorAll('rect').forEach(r=>r.classList.toggle('on',on.includes(r.dataset.s)))}
+/* Modelos de integrados (comportamiento según datasheet) */
+const or32=(a,b)=>a|b, xor86=(a,b)=>a^b, and08=(a,b)=>a&b;
+const btnBits=f=>[or32(+(f===2),+(f===4)),or32(+(f===3),+(f===4))]; // 74LS32: 2 o 4 y 3 o 4
+const ls74=(reg,d)=>{R[reg]=[d[0],d[1]]}; // flanco ascendente, PRE y CLR inactivos
+const ls48in=q=>({A:1-q[0],B:xor86(q[1],q[0]),C:and08(q[1],q[0]),D:0}); // A=Q0', B=Q1 xor Q0, C=Q1 y Q0, D=0
+const ls48out=(i,bi)=>{const v=i.A|i.B<<1|i.C<<2|i.D<<3;return bi&&v<10?SEG[v]:''};
+const ls85=(a,b)=>{const x=a[0]|a[1]<<1,y=b[0]|b[1]<<1;return{gt:+(x>y),eq:+(x===y),lt:+(x<y)}};
+/* Estado */
+let R,pin,virt,ar,pi,sp=1,logs,dirty;
+const floor=()=>(R.A[0]|R.A[1]<<1)+1, eff=k=>pin[k]||virt[k];
+function reset(){R={A:[0,0],L:[0,0],D:[0,0]};pin={call:0,dest:0};virt={call:0,dest:0};
+ar={st:'ESPERA_LLAMADA',t:performance.now(),dspL:0,dspD:0,last:0,msg:''};pi={sel:1,conf:false,phase:'call'};logs=[];
+log('Arduino listo. U1 cargado con 00 (piso 1).','ar');$('#ps').textContent=1}
+function log(t,c){logs.unshift(`<div class="${c||''}">${t}</div>`);logs.length=Math.min(logs.length,60);dirty=1}
+function say(t,flush){if(!$('#pon').checked)return;log('PI voz: “'+t+'”','pi');if($('#snd').checked&&window.speechSynthesis){try{if(flush)speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='es-ES';speechSynthesis.speak(u)}catch(e){}}}
+function ev(t){log('ARD → PI: '+t,'ar');if(t==='S')say('Subiendo');else if(t==='B')say('Bajando');else{say('Piso '+t.slice(1)+' alcanzado');if(pi.phase==='call'){pi.phase='dest';pi.sel=1;$('#ps').textContent=1;say('Elija el destino. Piso 1')}}}
+/* Arduino: máquina de estados */
+function loop(){
+ const now=performance.now(),el=(now-ar.t)*sp,S=ar.st;
+ if(S==='ESPERA_LLAMADA'){const c=eff('call');if(c){ls74('L',btnBits(c));ar.dspL=1;ar.st='IR_A_LLAMADA';ar.t=now-1500/sp;log('CLK_LLAMADA: U2 guarda el piso '+c,'ar')}}
+ else if(S==='ESPERA_DESTINO'){const d=eff('dest');
+  if(d){ls74('D',btnBits(d));log('CLK_DESTINO: U3 guarda el piso '+d,'ar');if(d===floor()){ar.msg='Ya estás en ese piso';ar.st='ESPERA_LLAMADA';pi.phase='call'}else{ar.dspD=1;ar.st='IR_A_DESTINO';ar.t=now-1500/sp}}
+  else if(el>12000){ar.st='ESPERA_LLAMADA';pi.phase='call';pi.sel=1;log('Sin destino: vuelve a espera de llamada','ar')}}
+ else if(S==='IR_A_LLAMADA'||S==='IR_A_DESTINO'){
+  if(el>=1500){ar.t=now;const d=S==='IR_A_DESTINO',k=ls85(R.A,R[d?'D':'L']);
+   if(k.eq){ar.st=d?'PARADA_2':'PARADA_1';ar.last=0;ev('L'+floor())}
+   else{const dir=k.lt?1:-1;if(ar.last!==dir){ev(dir>0?'S':'B');ar.last=dir}const v=floor()-1+dir;ls74('A',[v&1,v>>1&1]);log('CLK_ACTUAL: U1 pasa al piso '+(v+1),'ar')}}}
+ else if(el>=2000){if(S==='PARADA_1'){ar.dspL=0;ar.st='ESPERA_DESTINO'}else{ar.dspD=0;ar.st='ESPERA_LLAMADA';pi.phase='call';pi.sel=1}ar.t=now}
+}
+/* Interfaz */
+function press(k,f){pin[k]=f;const ok=k==='call'?ar.st==='ESPERA_LLAMADA':ar.st==='ESPERA_DESTINO';if(!ok){ar.msg='Bloqueado: el Arduino no da reloj a los flip-flops en este estado. El registro conserva su valor.';setTimeout(()=>ar.msg='',3500)}}
+['call','dest'].forEach((k,i)=>{const w=$(i?'#bD':'#bL');for(let f=1;f<=4;f++){const b=document.createElement('button');b.textContent=f;b.setAttribute('aria-label','Piso '+f);
+ const dn=()=>{b.classList.add('dn');press(k,f)},up=()=>{b.classList.remove('dn');if(pin[k]===f)pin[k]=0};
+ b.onpointerdown=dn;b.onpointerup=b.onpointerleave=b.onpointercancel=up;b.onkeydown=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();if(!e.repeat)dn()}};b.onkeyup=up;w.appendChild(b)}});
+mkSeg($('#dL'));mkSeg($('#dD'));
+$('#fl').innerHTML=[1,2,3,4].map(n=>`<div class="led g"><i></i>Piso ${n}</div>`).join('');
+$('#mv').innerHTML=['Subiendo','Bajando','Parar'].map((t,i)=>`<div class="led ${i==2?'a':'g'}"><i></i>${t}</div>`).join('');
+$('#pon').onchange=e=>{pi.sel=1;pi.conf=false;$('#ps').textContent=1;if(e.target.checked)say('Modo accesible activado. Piso 1',1)};
+$('#rs').onclick=()=>{reset()};
+document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{
+ if(!$('#pon').checked){ar.msg='Activa el modo accesible para usar los gestos';setTimeout(()=>ar.msg='',2500);return}
+ const k=pi.phase==='call'?'call':'dest';if(ar.st!==(k==='call'?'ESPERA_LLAMADA':'ESPERA_DESTINO'))return;
+ const g=b.dataset.g;log('PI cámara: gesto “'+g+'”','pi');
+ if(g==='up'||g==='down'){pi.sel=Math.max(1,Math.min(4,pi.sel+(g==='up'?1:-1)));pi.conf=false;say('Piso '+pi.sel,1)}
+ else if(!pi.conf){pi.conf=true;say('Piso '+pi.sel+' seleccionado, ¿desea confirmar?',1)}
+ else{pi.conf=false;const n=pi.sel;log('PI → ARD: '+(k==='call'?'C':'T')+n,'pi');virt[k]=n;setTimeout(()=>virt[k]=0,400)}
+ $('#ps').textContent=pi.sel;$('#pf').textContent=pi.conf?'(esperando confirmación)':''});
+const bt=(...x)=>x.map(v=>`<i class="${v?'h':'l'}">${v}</i>`).join(' ');
+function render(){
+ const bL=ar.dspL,bD=ar.dspD,iL=ls48in(R.L),iD=ls48in(R.D);
+ setSeg($('#dL'),ls48out(iL,bL));setSeg($('#dD'),ls48out(iD,bD));
+ const q=R.A,fq=[[1,1],[1,0],[0,1],[0,0]];
+ document.querySelectorAll('#fl .led').forEach((e,i)=>{const n=i&1?1:0;const on=and08(q[1]===(i>>1)?1:0,q[0]===(i&1)?1:0);e.classList.toggle('on',!!on)});
+ const ph=ar.st.includes('DESTINO')||ar.st==='PARADA_2',k=ls85(R.A,R[ph?'D':'L']),mov=ar.st.startsWith('IR_A');
+ const m=document.querySelectorAll('#mv .led');m[0].classList.toggle('on',mov&&!!k.lt);m[1].classList.toggle('on',mov&&!!k.gt);m[2].classList.toggle('on',!(mov&&!k.eq));
+ const a=FA[floor()-1];$('#needle').style.transform=`rotate(${a}deg)`;$('#ang').textContent='Servo '+a+'°';
+ $('#st').textContent=ar.st;$('#msg').textContent=ar.msg;
+ const c=ls85(R.A,R.L),d=ls85(R.A,R.D),cb=btnBits(pin.call),db=btnBits(pin.dest);
+ $('#insp').innerHTML=[
+ ['U1 74LS74, piso actual (Q1 Q0)',bt(R.A[1],R.A[0])+' = piso '+floor()],
+ ['U2 74LS74, llamada (Q1 Q0)',bt(R.L[1],R.L[0])],['U3 74LS74, destino (Q1 Q0)',bt(R.D[1],R.D[0])],
+ ['U10 74LS32 botones llamada (D1 D0)',bt(cb[1],cb[0])],['U10 74LS32 botones destino (D1 D0)',bt(db[1],db[0])],
+ ['U8 74LS48 llamada (D C B A) y BI',bt(iL.D,iL.C,iL.B,iL.A)+' BI='+bL],['U9 74LS48 destino (D C B A) y BI',bt(iD.D,iD.C,iD.B,iD.A)+' BI='+bD],
+ ['U6 74LS85 actual vs llamada (A>B, A=B, A<B)',bt(c.gt,c.eq,c.lt)],['U7 74LS85 actual vs destino (A>B, A=B, A<B)',bt(d.gt,d.eq,d.lt)]
+ ].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+ if(dirty){$('#lg').innerHTML=logs.join('');dirty=0}
+}
+reset();setInterval(()=>{loop();render()},50);
+</script></body></html>
