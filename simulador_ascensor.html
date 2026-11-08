@@ -26,7 +26,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .led.on i{background:var(--led);box-shadow:0 0 10px var(--led)}.led.g.on i{background:var(--ok);box-shadow:0 0 10px var(--ok)}.led.a.on i{background:var(--amb);box-shadow:0 0 10px var(--amb)}
 #needle{transition:transform 1.2s ease;transform-origin:70px 70px}
 @media (prefers-reduced-motion:reduce){#needle{transition:none}}
-.st{font-weight:700;color:var(--ac)}.msg{min-height:20px;color:#c2410c;font-size:13px;margin:8px 0 0}
+.st{font-weight:700;color:var(--ac)}button:disabled{opacity:.4;cursor:not-allowed}.msg{min-height:20px;color:#c2410c;font-size:13px;margin:8px 0 0}
 table{border-collapse:collapse;width:100%;font-size:13px}td{padding:3px 8px 3px 0;border-bottom:1px solid var(--bd);vertical-align:top}td:first-child{color:var(--mu)}
 td:last-child{font-family:ui-monospace,Menlo,Consolas,monospace}
 i.h{font-style:normal;color:var(--ok);font-weight:700}i.l{font-style:normal;color:var(--mu)}
@@ -97,11 +97,11 @@ function press(k,f){pin[k]=f;const ok=k==='call'?ar.st==='ESPERA_LLAMADA':ar.st=
 mkSeg($('#dL'));mkSeg($('#dD'));
 $('#fl').innerHTML=[1,2,3,4].map(n=>`<div class="led g"><i></i>Piso ${n}</div>`).join('');
 $('#mv').innerHTML=['Subiendo','Bajando','Parar'].map((t,i)=>`<div class="led ${i==2?'a':'g'}"><i></i>${t}</div>`).join('');
-$('#pon').onchange=e=>{pi.sel=1;pi.conf=false;$('#ps').textContent=1;if(e.target.checked)say('Modo accesible activado. Piso 1',1)};
+$('#pon').onchange=e=>{if(ar.st!=='ESPERA_LLAMADA'){e.target.checked=!e.target.checked;ar.msg='Cambia de modo solo con el ascensor detenido y en espera de llamada';setTimeout(()=>ar.msg='',3000);return}pin.call=pin.dest=0;document.querySelectorAll('.btns button').forEach(b=>b.classList.remove('dn'));pi.sel=1;pi.conf=false;pi.phase='call';$('#ps').textContent=1;if(e.target.checked)say('Modo accesible activado. Piso 1',1)};
 $('#rs').onclick=()=>{reset()};
 document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{
  if(!$('#pon').checked){ar.msg='Activa el modo accesible para usar los gestos';setTimeout(()=>ar.msg='',2500);return}
- const k=pi.phase==='call'?'call':'dest';if(ar.st!==(k==='call'?'ESPERA_LLAMADA':'ESPERA_DESTINO'))return;
+ const k=pi.phase==='call'?'call':'dest';if(ar.st!==(k==='call'?'ESPERA_LLAMADA':'ESPERA_DESTINO'))return;if(performance.now()-(pi.g||0)<800)return;pi.g=performance.now();
  const g=b.dataset.g;log('PI cámara: gesto “'+g+'”','pi');
  if(g==='up'||g==='down'){pi.sel=Math.max(1,Math.min(4,pi.sel+(g==='up'?1:-1)));pi.conf=false;say('Piso '+pi.sel,1)}
  else if(!pi.conf){pi.conf=true;say('Piso '+pi.sel+' seleccionado, ¿desea confirmar?',1)}
@@ -116,7 +116,7 @@ function render(){
  const ph=ar.st.includes('DESTINO')||ar.st==='PARADA_2',k=ls85(R.A,R[ph?'D':'L']),mov=ar.st.startsWith('IR_A');
  const m=document.querySelectorAll('#mv .led');m[0].classList.toggle('on',mov&&!!k.lt);m[1].classList.toggle('on',mov&&!!k.gt);m[2].classList.toggle('on',!(mov&&!k.eq));
  const a=FA[floor()-1];$('#needle').style.transform=`rotate(${a}deg)`;$('#ang').textContent='Servo '+a+'°';
- $('#st').textContent=ar.st;$('#msg').textContent=ar.msg;
+ $('#st').textContent=ar.st;$('#msg').textContent=ar.msg||($('#pon').checked?'Modo accesible: los botones de piso están deshabilitados.':'');document.querySelectorAll('.btns button').forEach(b=>b.disabled=$('#pon').checked);
  const c=ls85(R.A,R.L),d=ls85(R.A,R.D),cb=btnBits(pin.call),db=btnBits(pin.dest);
  $('#insp').innerHTML=[
  ['U1 74LS74, piso actual (Q1 Q0)',bt(R.A[1],R.A[0])+' = piso '+floor()],
